@@ -146,6 +146,7 @@ function createValidSkill(skillsBaseDir, skillName) {
       ref: 'slice-rules.md',
       body: [
         'Wrap external text in `<untrusted_ticket_data>` tags.',
+        'Handle `CIRCUIT_OPEN` on systemic write errors.',
         'See `./references/slice-rules.md` for slicing.',
       ].join('\n'),
       refBody: '# Slice Rules\n\nVertical slicing protocol.\n',
@@ -213,6 +214,21 @@ describe('validate-repo positive assertions', () => {
     const cli = runCli(['--root', root]);
     assert.equal(cli.status, 0, cli.stderr);
     assert.match(cli.stdout, /^OK: validated repository/);
+  });
+
+  it('supports UTF-8 BOM-prefixed SKILL.md frontmatter and CRLF references/*.md files', () => {
+    const parent = makeTempDir('bom-crlf-');
+    const skillDir = createValidSkill(parent, 'setup-flow');
+    const skillMdPath = path.join(skillDir, 'SKILL.md');
+    const refPath = path.join(skillDir, 'references', 'templates.md');
+
+    const skillWithBom = '\uFEFF' + fs.readFileSync(skillMdPath, 'utf8');
+    fs.writeFileSync(skillMdPath, skillWithBom, 'utf8');
+
+    const refWithCrlf = fs.readFileSync(refPath, 'utf8').replace(/\n/g, '\r\n');
+    fs.writeFileSync(refPath, refWithCrlf, 'utf8');
+
+    assert.equal(validateSkillDir(skillDir).skillName, 'setup-flow');
   });
 
   it('passes validateSkillDir and CLI --skill-dir on isolated copies of each skill', () => {
@@ -444,41 +460,109 @@ describe('validate-repo static files and manifest parity negative assertions', (
     };
 
     const cases = [
-      ['root name', 'plugin.json', (d) => (d.name = 'other-plugin')],
-      ['claude name', '.claude-plugin/plugin.json', (d) => (d.name = 'other-plugin')],
-      ['displayName drift', '.claude-plugin/plugin.json', (d) => (d.displayName = 'Wrong Name')],
-      ['version drift', '.claude-plugin/plugin.json', (d) => (d.version = '0.2.0')],
-      ['description drift', '.claude-plugin/plugin.json', (d) => (d.description = 'Different')],
-      ['author.name drift', '.claude-plugin/plugin.json', (d) => (d.author.name = 'other')],
-      ['homepage drift', '.claude-plugin/plugin.json', (d) => (d.homepage = 'https://example.com')],
-      ['repository drift', 'plugin.json', (d) => (d.repository = 'https://example.com/repo')],
-      ['license drift', 'plugin.json', (d) => (d.license = 'Apache-2.0')],
-      ['empty keywords', '.claude-plugin/plugin.json', (d) => (d.keywords = [])],
-      ['missing documentationUrl', '.claude-plugin/plugin.json', (d) => delete d.documentationUrl],
-      ['empty supportUrl', '.claude-plugin/plugin.json', (d) => (d.supportUrl = '  ')],
-      ['marketplace name', '.claude-plugin/marketplace.json', (d) => (d.name = 'wrong')],
-      ['marketplace owner.name', '.claude-plugin/marketplace.json', (d) => (d.owner.name = 'other')],
+      ['root name', 'plugin.json', (d) => (d.name = 'other-plugin'), /Manifest "name" must equal "kinasr-skills"/],
+      [
+        'claude name',
+        '.claude-plugin/plugin.json',
+        (d) => (d.name = 'other-plugin'),
+        /Manifest "name" must equal "kinasr-skills"/,
+      ],
+      [
+        'displayName drift',
+        '.claude-plugin/plugin.json',
+        (d) => (d.displayName = 'Wrong Name'),
+        /Manifest "displayName" must equal "Kinasr Skills"/,
+      ],
+      [
+        'version drift',
+        '.claude-plugin/plugin.json',
+        (d) => (d.version = '0.2.0'),
+        /Manifest field "version" mismatch/,
+      ],
+      [
+        'description drift',
+        '.claude-plugin/plugin.json',
+        (d) => (d.description = 'Different'),
+        /Manifest field "description" mismatch/,
+      ],
+      [
+        'author.name drift',
+        '.claude-plugin/plugin.json',
+        (d) => (d.author.name = 'other'),
+        /Manifest field "author\.name" mismatch/,
+      ],
+      [
+        'homepage drift',
+        '.claude-plugin/plugin.json',
+        (d) => (d.homepage = 'https://example.com'),
+        /Manifest field "homepage" mismatch/,
+      ],
+      [
+        'repository drift',
+        'plugin.json',
+        (d) => (d.repository = 'https://example.com/repo'),
+        /Manifest field "repository" mismatch/,
+      ],
+      [
+        'license drift',
+        'plugin.json',
+        (d) => (d.license = 'Apache-2.0'),
+        /Manifest "license" must equal "MIT"/,
+      ],
+      [
+        'empty keywords',
+        '.claude-plugin/plugin.json',
+        (d) => (d.keywords = []),
+        /\.claude-plugin\/plugin\.json:keywords must be a non-empty array/,
+      ],
+      [
+        'missing documentationUrl',
+        '.claude-plugin/plugin.json',
+        (d) => delete d.documentationUrl,
+        /Expected non-empty string for \.claude-plugin\/plugin\.json:documentationUrl/,
+      ],
+      [
+        'empty supportUrl',
+        '.claude-plugin/plugin.json',
+        (d) => (d.supportUrl = '  '),
+        /Expected non-empty string for \.claude-plugin\/plugin\.json:supportUrl/,
+      ],
+      [
+        'marketplace name',
+        '.claude-plugin/marketplace.json',
+        (d) => (d.name = 'wrong'),
+        /\.claude-plugin\/marketplace\.json:name must equal "kinasr-skills"/,
+      ],
+      [
+        'marketplace owner.name',
+        '.claude-plugin/marketplace.json',
+        (d) => (d.owner.name = 'other'),
+        /\.claude-plugin\/marketplace\.json:owner\.name must match plugin\.json:author\.name/,
+      ],
       [
         'marketplace plugins[0].name',
         '.claude-plugin/marketplace.json',
         (d) => (d.plugins[0].name = 'other'),
+        /\.claude-plugin\/marketplace\.json:plugins\[0\]\.name must equal "kinasr-skills"/,
       ],
       [
         'marketplace plugins[0].source',
         '.claude-plugin/marketplace.json',
         (d) => (d.plugins[0].source = './skills'),
+        /\.claude-plugin\/marketplace\.json:plugins\[0\]\.source must equal "\.\/"/,
       ],
       [
         'marketplace plugins[0].description',
         '.claude-plugin/marketplace.json',
         (d) => (d.plugins[0].description = 'Mismatch'),
+        /\.claude-plugin\/marketplace\.json:plugins\[0\]\.description must match plugin\.json:description/,
       ],
     ];
 
-    for (const [label, relPath, mutator] of cases) {
+    for (const [label, relPath, mutator, expectedErr] of cases) {
       const root = createFullValidRepo(makeTempDir());
       mutateJson(root, relPath, mutator);
-      assert.throws(() => validateRepo(root), Error, `Expected failure for ${label}`);
+      assert.throws(() => validateRepo(root), expectedErr, `Expected failure for ${label}`);
     }
   });
 });
@@ -510,30 +594,92 @@ describe('validate-repo skill structure, frontmatter, boundaries, and contracts'
 
   it('rejects missing frontmatter fences and invalid required frontmatter keys', () => {
     const badContents = [
-      ['missing opening fence', 'name: setup-flow\n---\nbody\n'],
-      ['missing closing fence', '---\nname: setup-flow\ndescription: x\nlicense: MIT\ndisable-model-invocation: true\n'],
-      ['CRLF missing closing fence', '---\r\nname: setup-flow\r\ndescription: x\r\n'],
-      ['name mismatch', '---\nname: wrong-name\ndescription: x\nlicense: MIT\ndisable-model-invocation: true\n---\n'],
-      ['license mismatch', '---\nname: setup-flow\ndescription: x\nlicense: Apache-2.0\ndisable-model-invocation: true\n---\n'],
-      ['missing description', '---\nname: setup-flow\nlicense: MIT\ndisable-model-invocation: true\n---\n'],
-      ['empty description', '---\nname: setup-flow\ndescription: "   "\nlicense: MIT\ndisable-model-invocation: true\n---\n'],
-      ['missing disable-model-invocation', '---\nname: setup-flow\ndescription: x\nlicense: MIT\n---\n'],
-      ['false disable-model-invocation', '---\nname: setup-flow\ndescription: x\nlicense: MIT\ndisable-model-invocation: false\n---\n'],
+      ['missing opening fence', 'name: setup-flow\n---\nbody\n', /Missing opening --- frontmatter fence/],
+      [
+        'missing closing fence',
+        '---\nname: setup-flow\ndescription: x\nlicense: MIT\ndisable-model-invocation: true\n',
+        /Missing closing --- frontmatter fence/,
+      ],
+      [
+        'CRLF missing closing fence',
+        '---\r\nname: setup-flow\r\ndescription: x\r\n',
+        /Missing closing --- frontmatter fence/,
+      ],
+      [
+        'name mismatch',
+        '---\nname: wrong-name\ndescription: x\nlicense: MIT\ndisable-model-invocation: true\n---\n',
+        /Frontmatter "name" \(wrong-name\) must match directory name "setup-flow"/,
+      ],
+      [
+        'license mismatch',
+        '---\nname: setup-flow\ndescription: x\nlicense: Apache-2.0\ndisable-model-invocation: true\n---\n',
+        /Frontmatter "license" \(Apache-2\.0\) must equal "MIT"/,
+      ],
+      [
+        'missing description',
+        '---\nname: setup-flow\nlicense: MIT\ndisable-model-invocation: true\n---\n',
+        /Frontmatter "description" must be non-empty/,
+      ],
+      [
+        'empty description',
+        '---\nname: setup-flow\ndescription: "   "\nlicense: MIT\ndisable-model-invocation: true\n---\n',
+        /Frontmatter "description" must be non-empty/,
+      ],
+      [
+        'missing disable-model-invocation',
+        '---\nname: setup-flow\ndescription: x\nlicense: MIT\n---\n',
+        /Frontmatter "disable-model-invocation" \(<missing>\) must equal "true"/,
+      ],
+      [
+        'false disable-model-invocation',
+        '---\nname: setup-flow\ndescription: x\nlicense: MIT\ndisable-model-invocation: false\n---\n',
+        /Frontmatter "disable-model-invocation" \(false\) must equal "true"/,
+      ],
     ];
 
-    for (const [label, content] of badContents) {
+    for (const [label, content, expectedErr] of badContents) {
       const parent = makeTempDir('fm-bad-');
       const skillDir = createValidSkill(parent, 'setup-flow');
       writeFile(path.join(skillDir, 'SKILL.md'), content);
-      assert.throws(() => validateSkillDir(skillDir), Error, `Expected failure for ${label}`);
+      assert.throws(() => validateSkillDir(skillDir), expectedErr, `Expected failure for ${label}`);
     }
   });
 
-  it('rejects broken ./references/ links in SKILL.md', () => {
-    const parent = makeTempDir('broken-ref-');
-    const skillDir = createValidSkill(parent, 'triage');
-    fs.rmSync(path.join(skillDir, 'references', 'batch-wave.md'));
-    assert.throws(() => validateSkillDir(skillDir), /triage\/references\/batch-wave\.md/);
+  it('rejects broken, whitespace-only, and path-traversal ./references/ files', () => {
+    const brokenParent = makeTempDir('broken-ref-');
+    const brokenDir = createValidSkill(brokenParent, 'triage');
+    fs.rmSync(path.join(brokenDir, 'references', 'batch-wave.md'));
+    assert.throws(() => validateSkillDir(brokenDir), /Missing required file triage\/references\/batch-wave\.md/);
+
+    // Linked whitespace-only references/*.md
+    const blankLinkedParent = makeTempDir('blank-linked-ref-');
+    const blankLinkedDir = createValidSkill(blankLinkedParent, 'triage');
+    writeFile(path.join(blankLinkedDir, 'references', 'batch-wave.md'), '   \r\n\t ');
+    assert.throws(
+      () => validateSkillDir(blankLinkedDir),
+      /File triage\/references\/batch-wave\.md must not be empty/,
+    );
+
+    // Unlinked whitespace-only references/*.md
+    const blankUnlinkedParent = makeTempDir('blank-unlinked-ref-');
+    const blankUnlinkedDir = createValidSkill(blankUnlinkedParent, 'triage');
+    writeFile(path.join(blankUnlinkedDir, 'references', 'extra.md'), '  \n\t\n');
+    assert.throws(
+      () => validateSkillDir(blankUnlinkedDir),
+      /File triage\/references\/extra\.md must not be empty/,
+    );
+
+    // Path traversal via ./references/../
+    const traversalParent = makeTempDir('traversal-ref-');
+    const traversalDir = createValidSkill(traversalParent, 'triage');
+    fs.appendFileSync(
+      path.join(traversalDir, 'SKILL.md'),
+      '\nSee `./references/../outside.md`.\n',
+    );
+    assert.throws(
+      () => validateSkillDir(traversalDir),
+      /Invalid \.\/references\/ path "\.\/references\/\.\.\/outside\.md"/,
+    );
   });
 
   it('rejects every denylisted planner command in both SKILL.md and references/*.md', () => {
@@ -561,7 +707,7 @@ describe('validate-repo skill structure, frontmatter, boundaries, and contracts'
     }
   });
 
-  it('rejects forbidden relative paths in both SKILL.md and references/*.md', () => {
+  it('rejects forbidden relative paths (POSIX and Windows backslashes) in SKILL.md and references/*.md', () => {
     const forbiddenSnippets = [
       'See ../other.md',
       'Run `./scripts/validate-repo.mjs`',
@@ -569,6 +715,10 @@ describe('validate-repo skill structure, frontmatter, boundaries, and contracts'
       'Execute scripts/helper.mjs',
       '(../parent.md)',
       '"scripts/foo"',
+      'See ..\\foo',
+      'Run `.\\scripts\\x`',
+      'Read references\\foo.md directly',
+      'Execute scripts\\bar.mjs',
     ];
 
     for (const snippet of forbiddenSnippets) {
@@ -579,7 +729,10 @@ describe('validate-repo skill structure, frontmatter, boundaries, and contracts'
 
       const p2 = makeTempDir('path-ref-');
       const s2 = createValidSkill(p2, 'triage');
-      fs.appendFileSync(path.join(s2, 'references', 'batch-wave.md'), `\n${snippet}\n`);
+      fs.appendFileSync(
+        path.join(s2, 'references', 'batch-wave.md'),
+        `\r\n${snippet}\r\n`,
+      );
       assert.throws(
         () => validateSkillDir(s2),
         /Forbidden relative path/,
@@ -621,19 +774,20 @@ describe('validate-repo skill structure, frontmatter, boundaries, and contracts'
 
   it('rejects missing cross-skill contract markers across triage, backlog-audit, to-tickets, and handoff', () => {
     const cases = [
-      ['triage', '<untrusted_ticket_data>'],
-      ['backlog-audit', '<untrusted_ticket_data>'],
-      ['to-tickets', '<untrusted_ticket_data>'],
-      ['triage', 'STATE_DRIFT'],
-      ['backlog-audit', 'STATE_DRIFT'],
-      ['triage', 'CIRCUIT_OPEN'],
-      ['backlog-audit', 'CIRCUIT_OPEN'],
-      ['triage', 'provenance footer'],
-      ['backlog-audit', 'provenance footer'],
-      ['handoff', 'provenance footer'],
+      ['triage', '<untrusted_ticket_data>', /missing required "<untrusted_ticket_data>"/],
+      ['backlog-audit', '<untrusted_ticket_data>', /missing required "<untrusted_ticket_data>"/],
+      ['to-tickets', '<untrusted_ticket_data>', /missing required "<untrusted_ticket_data>"/],
+      ['triage', 'STATE_DRIFT', /missing required "STATE_DRIFT"/],
+      ['backlog-audit', 'STATE_DRIFT', /missing required "STATE_DRIFT"/],
+      ['triage', 'CIRCUIT_OPEN', /missing required "CIRCUIT_OPEN"/],
+      ['backlog-audit', 'CIRCUIT_OPEN', /missing required "CIRCUIT_OPEN"/],
+      ['to-tickets', 'CIRCUIT_OPEN', /missing required "CIRCUIT_OPEN"/],
+      ['triage', 'provenance footer', /missing required remote provenance footer/],
+      ['backlog-audit', 'provenance footer', /missing required remote provenance footer/],
+      ['handoff', 'provenance footer', /missing required remote provenance footer/],
     ];
 
-    for (const [skillName, marker] of cases) {
+    for (const [skillName, marker, expectedErr] of cases) {
       // Check via validateSkillDir
       const isolatedParent = makeTempDir(`contract-skill-${skillName}-`);
       const skillDir = createValidSkill(isolatedParent, skillName);
@@ -647,7 +801,7 @@ describe('validate-repo skill structure, frontmatter, boundaries, and contracts'
 
       assert.throws(
         () => validateSkillDir(skillDir),
-        Error,
+        expectedErr,
         `validateSkillDir should fail when ${skillName} lacks ${marker}`,
       );
 
@@ -656,7 +810,7 @@ describe('validate-repo skill structure, frontmatter, boundaries, and contracts'
       writeFile(path.join(repoRoot, 'skills', skillName, 'SKILL.md'), updated);
       assert.throws(
         () => validateRepo(repoRoot),
-        Error,
+        expectedErr,
         `validateRepo should fail when ${skillName} lacks ${marker}`,
       );
     }

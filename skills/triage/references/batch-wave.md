@@ -1,6 +1,6 @@
 # Triage Batch Mode: Topological-Wave Protocol
 
-Loaded by `triage` when invoked with `untriaged` or `2–10` explicit ticket IDs. All rules from `SKILL.md` (`Run Context Header`, `Preflight`, `<untrusted_ticket_data>` framing, syntactic reference-ID allowlists / custom `ID Pattern`, `--`/stdin/`--body-file`/JSON passing, preview sanitization, `Propose -> Approve -> Apply`, `STATE_DRIFT`, `CIRCUIT_OPEN`, provenance footers, Execution Receipt, and zero source-code edits) apply throughout Batch Mode.
+Loaded by `triage` when invoked with `untriaged` or `2+` explicit ticket IDs. All rules from `SKILL.md` (`Run Context Header`, `Preflight`, `<untrusted_ticket_data>` framing, syntactic reference-ID allowlists / custom `ID Pattern`, `--`/stdin/`--body-file`/JSON passing, preview sanitization, `Propose -> Approve -> Apply`, `STATE_DRIFT`, `CIRCUIT_OPEN`, provenance footers, Execution Receipt, and zero source-code edits) apply throughout Batch Mode.
 
 ---
 
@@ -111,8 +111,8 @@ Before reading any repository source files:
 3. **Pre-Apply Re-Verification, `STATE_DRIFT` & `CIRCUIT_OPEN`:**
    - Immediately before mutating each approved ticket in topological order, re-fetch its live state, labels, and body.
    - If the ticket drifted since the Coordinator fetch, skip its writes as **`SKIPPED (STATE_DRIFT)`** and **cascade `NEEDS_RECHECK`** transitively to all unapplied downstream dependents in the batch.
-   - Apply approved edits via `--body-file`/stdin/JSON (`native_deps=true` native API + comment, or `native_deps=false` top-of-body append + comment; combined label swap else `add-new -> remove-old`; branch-free provenance footer on comments).
+   - Apply approved edits via `--body-file`/stdin/JSON (when `Blocked by` edges are discovered: `native_deps=true` binds native API edges AND prepends `Blocked by <ID>` lines at the top of the body, while `native_deps=false` prepends `Blocked by <ID>` lines at the top of the body; when zero blockers are discovered, leave the body untouched and apply labels + summary comment only; combined label swap else `add-new -> remove-old`; branch-free provenance footer on comments).
    - If any write encounters systemic auth or rate-limit failures (`401`, `403`, `429`), open the circuit breaker immediately, halt further writes, and mark all remaining unapplied items **`SKIPPED (CIRCUIT_OPEN)`**.
 4. **Execution Receipt & Stop:**
-   - Emit the Execution Receipt table (`target_id`, `operation`, `outcome`, `url_or_path`, `detail`) covering applied, skipped (`STATE_DRIFT`, `CIRCUIT_OPEN`, `NEEDS_RECHECK`, `UNRESOLVED`, `UPSTREAM_UNRESOLVED`, `CYCLE_BLOCKED`), and next-step routing (`backlog-audit` for `CYCLE_BLOCKED`; `triage` retry for `UNRESOLVED`, `UPSTREAM_UNRESOLVED`, `NEEDS_RECHECK`, `STATE_DRIFT`).
+   - Emit the Execution Receipt table (`target_id`, `operation`, `outcome`, `URL/path`, `error/resume detail`) covering uppercase outcome tokens (`APPLIED`, `SKIPPED (STATE_DRIFT)`, `SKIPPED (CIRCUIT_OPEN)`, `SKIPPED (NEEDS_RECHECK)`, `SKIPPED (UNRESOLVED)`, `SKIPPED (UPSTREAM_UNRESOLVED)`, `SKIPPED (CYCLE_BLOCKED)`) and next-step routing (`backlog-audit` for `CYCLE_BLOCKED`; `triage` retry for `UNRESOLVED`, `UPSTREAM_UNRESOLVED`, `NEEDS_RECHECK`, `STATE_DRIFT`).
    - Stop cleanly without editing repository source code.

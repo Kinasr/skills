@@ -123,9 +123,11 @@ If any write fails with HTTP `401`, `403`, `429`, expired auth, or unreachable A
 2. Mark all remaining items `SKIPPED (CIRCUIT_OPEN)` in the Execution Receipt table.
 3. Preserve every uncreated slice in `pending_slices` and every unapplied native/cross-ticket edge in `pending_edges` inside the fenced JSON Execution Receipt.
 
-### Fenced JSON Execution Receipt Schema
+### Execution Receipt Table & Fenced JSON Schema
 
-Always emit the receipt as a fenced `json` block after `Apply` (even on partial failure):
+Always emit the summary Execution Receipt table (columns: `target_id`, `operation`, `outcome`, `URL/path`, `error/resume detail`, with uppercase outcome tokens `APPLIED`, `SKIPPED (DUPLICATE_EXISTS)`, `SKIPPED (CIRCUIT_OPEN)`) and the fenced `json` receipt block after `Apply` (even on partial failure).
+
+- `origin_ticket` is nullable: set `"<id>"` when slicing from a planned origin ticket, or `null` when no planned origin ticket exists.
 
 ```json
 {
@@ -165,8 +167,8 @@ Always emit the receipt as a fenced `json` block after `Apply` (even on partial 
 ### `--resume [path|receipt]` Protocol
 
 1. Load the fenced JSON Execution Receipt from the supplied file path (`--resume <path>`) or the most recent receipt block in the chat/session.
-2. Validate `schema === 1`, `skill === "to-tickets"`, and validate every ID in `created_ids`, `origin_ticket`, `related_ids`, and `supersedes_ids` against the syntactic ID allowlist.
+2. Validate `schema === 1`, `skill === "to-tickets"`, and allow `origin_ticket` to be either `null` or a valid ticket ID. Validate every literal or resolved ticket ID in `created_ids`, `origin_ticket` (when non-null), `related_ids`, `supersedes_ids`, `pending_slices` (`parent_key` and `blocked_by_keys` whenever they carry literal/resolved IDs rather than pending slice keys), and `pending_edges` against the syntactic ID allowlist (rejecting invalid IDs). Strip control characters, ANSI escape sequences, and unsafe HTML from loaded receipt strings (`source`, `title`, `summary`, `acceptance_criteria`, `labels`) before rendering previews.
 3. Run Section 1–2 Preflight and auth/label probes; emit Run Context Header.
 4. Resolve all dependency keys already present in `created_ids` (removing any `pending_slices` item whose `key` is already in `created_ids`).
-5. Present the remaining `pending_slices` and `pending_edges` under `Propose -> Approve -> Apply`.
-6. On approval, execute pre-creation duplicate checks, create remaining slices in topological order (writing prose `Blocked by` at creation), bind `pending_edges` when `native_deps=true`, handle `CIRCUIT_OPEN` if triggered again, and emit an updated Execution Receipt table + fenced JSON block.
+5. Present the sanitized remaining `pending_slices` and `pending_edges` under `Propose -> Approve -> Apply`.
+6. On approval, execute pre-creation duplicate checks (`SKIPPED (DUPLICATE_EXISTS)`), create remaining slices in topological order (`APPLIED`, writing prose `Blocked by` at creation), bind `pending_edges` when `native_deps=true`, handle `CIRCUIT_OPEN` (`SKIPPED (CIRCUIT_OPEN)`) if triggered again, and emit an updated Execution Receipt table + fenced JSON block.

@@ -12,7 +12,7 @@ Evaluate a single ticket or a small batch (`<= 10`) to assign mutually exclusive
 **Boundaries:**
 - Never edit repository source code. Stop cleanly after applying approved tracker updates and emitting the Execution Receipt (or after reporting no-op / skipped outcomes).
 - Never auto-invoke other skills (`setup-flow`, `backlog-audit`, `to-tickets`, `handoff`). Emit harness-neutral guidance when another skill is needed (for example: `run setup-flow (/kinasr-skills:setup-flow or /setup-flow)`).
-- Use **Single Mode** below for 1 explicit ticket ID. For `untriaged` or `2–10` explicit ticket IDs (**Batch Mode**), load and follow `./references/batch-wave.md` in full.
+- Use **Single Mode** below for 1 explicit ticket ID. For `untriaged` or `2+` explicit ticket IDs (**Batch Mode**), load and follow `./references/batch-wave.md` in full.
 
 ---
 
@@ -30,7 +30,7 @@ Evaluate a single ticket or a small batch (`<= 10`) to assign mutually exclusive
      - `Workflow States`: `needs-info, ready:direct, ready:lite, ready:design`.
      - `Excluded Active/Terminal States`: `in-progress, in-review, done, closed`.
      - `Ticket Types`: `bug, feature, enhancement, chore, docs, epic`; `Priority Labels`: `none`; `Passive WIP Signal`: `open linked PRs`.
-     - `Lite Planner`: `host built-in plan mode`; `Full Planner`: `external design planner`; `Specs Path`: `docs/designs/`.
+     - `Lite Planner`: `host built-in plan mode`; `Full Planner`: `Elephant-Goldfish Model (EGM) design workflow`; `Specs Path`: `docs/designs/`.
      - `Linking Rule`: `Blocked by <ID>`, `Parent: <ID>`, `Related to <ID>`, `Supersedes <ID>`.
 3. **Unconfigured Halt:**
    - If neither `.agents/work-tracking.md` nor an authenticated `gh`/`glab` remote resolves, print:
@@ -67,7 +67,7 @@ Apply every rule below across both Single Mode and Batch Mode (`./references/bat
     - Markdown-capable trackers: `<!-- kinasr-skills: triage | <YYYY-MM-DDTHH:MM:SSZ> | <short-sha|no-sha> -->`
     - Rich-text / ADF / non-HTML trackers (plain-text fallback): `[kinasr-skills: triage | <YYYY-MM-DDTHH:MM:SSZ> | <short-sha|no-sha>]`
     - Use `no-sha` when `HEAD` is unborn or the workspace is `<no-git>`. Never include branch names.
-  - After `Apply` finishes, emit an **Execution Receipt** table (`target_id`, `operation`, `outcome`, `url_or_path`, `detail`).
+  - After `Apply` finishes, emit an **Execution Receipt** table (`target_id`, `operation`, `outcome`, `URL/path`, `error/resume detail`) using uppercase outcome tokens (`APPLIED`, `SKIPPED (STATE_DRIFT)`, `SKIPPED (CIRCUIT_OPEN)`).
 
 ---
 
@@ -100,8 +100,8 @@ Triage Readiness is mutually exclusive (`needs-info`, `ready:direct`, `ready:lit
    - Preview exact tracker mutations:
      - Readiness / type label swap (combined single-call or `add-new -> remove-old`).
      - Persistence of `Blocked by` edges and 3-line plan (`ready:direct`):
-       - **`native_deps=true`:** Bind blocking edges via the tracker's native dependency API and post the triage summary (including 3-line plan, questions, or verbatim planner hint) as a comment with the provenance footer.
-       - **`native_deps=false`:** Prepend `Blocked by <ID>` lines at the top of the ticket body (showing an exact non-destructive append/diff preview) and post the triage summary as a comment with the provenance footer.
+       - **`native_deps=true`:** When `Blocked by` edges are discovered, bind blocking edges via the tracker's native dependency API AND prepend `Blocked by <ID>` lines at the top of the ticket body (showing an exact non-destructive diff preview) to prevent native-vs-prose drift; when zero blockers are discovered, leave the body untouched. Always post the triage summary (including 3-line plan, questions, or verbatim planner hint) as a comment with the provenance footer.
+       - **`native_deps=false`:** Only when `Blocked by` edges are discovered, prepend `Blocked by <ID>` lines at the top of the ticket body (showing an exact non-destructive diff preview); when zero blockers are discovered, leave the body untouched. Always post the triage summary as a comment with the provenance footer.
    - Wait for explicit user approval.
 5. **Pre-Apply Verification, Apply & Execution Receipt:**
    - Re-fetch the ticket immediately before applying writes; on drift, skip and report `SKIPPED (STATE_DRIFT)` for re-proposal.
