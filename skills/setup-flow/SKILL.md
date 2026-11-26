@@ -49,7 +49,7 @@ Read `./references/templates.md` and present prefilled defaults (from existing `
 9. `Lite Planner`: free-text user-facing hint (e.g., `Host built-in plan mode`; printed verbatim by `triage`, never auto-invoked)
 10. `Full Planner`: free-text user-facing hint (e.g., `EGM design workflow`; printed verbatim by `triage`, never auto-invoked)
 11. `Specs Path`: `docs/designs/` (default)
-12. `Linking Rule`: `Blocked by <ID>, Parent: <ID>, Related to <ID>, Supersedes <ID>` (for `native_deps=false`; also written as prose `Blocked by` at creation)
+12. `Linking Rule`: `Blocked by <ID>, Parent: <ID>, Related to <ID>, Supersedes <ID>` (for `native_deps=false`; also written as prose `Blocked by` by `to-tickets` at creation and `triage` when blockers are discovered)
 13. `ID Pattern`: `none` (default) or custom regex override for non-standard ticket keys
 14. `Max Backlog Scan`: `150` (default)
 15. `Stale Days`: `30` (default)
@@ -64,7 +64,7 @@ Also ask the user:
 ## 3. Propose -> Approve -> Apply
 
 ### Propose (Preview)
-Present a single consolidated preview before writing anything:
+Present a single consolidated preview before writing anything (sanitizing control characters, ANSI escape sequences, and unsafe HTML in any values prefilled from legacy files or remote tracker metadata):
 - Full proposed `.agents/work-tracking.md` (`Schema: 1`) using `./references/templates.md`, preserving any existing custom `## Notes` or repository notes idempotently.
 - Exact 4-line `## Work Tracking` block for `./AGENTS.md` (showing diff against existing `./AGENTS.md` if present, preserving unrelated sections).
 - Exact 1-line `@AGENTS.md` or `@../AGENTS.md` top insertion diff **only** for already-existing `./CLAUDE.md` / `.claude/CLAUDE.md` where the user opted in.
