@@ -40,7 +40,7 @@ Schema: 1
 - **Untriaged Signal:** `missing workflow label` (default for label-based trackers; matches open tickets holding none of `Workflow States` and not in `Excluded Active/Terminal States`), or an explicit intake column/status for board trackers (e.g., `status:Triage`).
 - **Priority Labels:** Defaults to `none`. When set (comma-separated, highest priority first), `triage` and `backlog-audit` order **Actionable Frontier** items `bug` first, then by `Priority Labels` order, then oldest `updated_at`.
 - **Lite Planner / Full Planner:** Free-text user-facing hints printed verbatim by `triage` when routing to `ready:lite` or `ready:design`. Skills never auto-invoke planners.
-- **Linking Rule:** Prose link tokens used in ticket bodies when `native_deps=false` (and written alongside native links at ticket creation by `to-tickets`).
+- **Linking Rule:** Prose link tokens used in ticket bodies when `native_deps=false` (and written alongside native links at ticket creation by `to-tickets` and when `triage` discovers `Blocked by` edges).
 - **ID Pattern:** `none` uses built-in allowlists (`#N` / `^\d+$` after stripping `#`, and `^[A-Z][A-Z0-9]+-\d+$`). Provide a regex here if the custom tracker uses another ticket key format.
 
 ### Idempotent Merge Rules
