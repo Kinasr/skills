@@ -1,0 +1,13 @@
+{
+  "name": "kinasr-skills",
+  "owner": {
+    "name": "kinasr"
+  },
+  "plugins": [
+    {
+      "name": "kinasr-skills",
+      "source": "./",
+      "description": "Work-orchestration and session-hygiene skills around AI coding agents and planners."
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "name": "kinasr-skills",
+  "displayName": "Kinasr Skills",
+  "version": "0.1.0",
+  "license": "MIT",
+  "author": {
+    "name": "kinasr"
+  },
+  "description": "Work-orchestration and session-hygiene skills around AI coding agents and planners.",
+  "homepage": "https://github.com/Kinasr/skills",
+  "repository": "https://github.com/Kinasr/skills",
+  "suggestedPrompts": [
+    "Initialize work tracking for this repository",
+    "Triage untriaged issues and propose readiness states",
+    "Audit the open backlog for blockers and stale items"
+  ]
+}
