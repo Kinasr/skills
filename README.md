@@ -31,12 +31,12 @@ By default, `kinasr-skills` pairs smoothly with [EGM (Elephant-Goldfish Model)](
 
 ### Verification Status (Planned vs. Executed)
 
-| Target | Pre-Release Status | Post-Release Plan | Notes |
+| Target | Status | Post-Release Plan | Notes |
 | --- | --- | --- | --- |
-| **Antigravity CLI (`agy`)** | Planned pre-release runtime verification | Maintained | Uses `invoke_subagent` for topological-wave batch `triage`. |
-| **Antigravity App** | Planned pre-release runtime verification (manual copy) | Maintained | Interactive command forms remain unverified until tested. |
+| **Antigravity CLI (`agy`)** | Executed (`2026-11-26`, `v0.1.0`) — see [#6](https://github.com/Kinasr/skills/issues/6) | Maintained | Verified clean `agy plugin install`, `agy plugin validate --strict` (5 skills, 0 errors), and live GitHub (`gh`) smoke checks across all 5 skills including `invoke_subagent` wave `triage` (`glab` skipped — not installed). |
+| **Antigravity App** | Unverified (manual copy) | Maintained | Interactive command forms remain unverified until tested. |
 | **Antigravity for IDEs / Standalone IDE** | Unverified interactive command forms | — | Standalone Antigravity IDE lacks `invoke_subagent`; batch `triage` warns, names the top-priority single-ticket command, and halts. |
-| **Claude Code** | Planned CI metadata & manifest validation only (not runtime-tested pre-release) | Planned post-release manual runtime verification | `plugin.json`, `.claude-plugin/plugin.json`, and `.claude-plugin/marketplace.json` are validated in CI. |
+| **Claude Code** | CI metadata & manifest validation only (not yet runtime-tested) | Tracked in [#8](https://github.com/Kinasr/skills/issues/8) | `plugin.json`, `.claude-plugin/plugin.json`, and `.claude-plugin/marketplace.json` are validated in CI. |
 | **Codex CLI, Cursor, generic `skills/`** | Deferred to [#2](https://github.com/Kinasr/skills/issues/2) | Tracked in [#2](https://github.com/Kinasr/skills/issues/2) | Self-contained `skills/<name>/` directories preserve future multi-harness portability. |
 
 *(Built-in local Markdown file tracking is also deferred to [#1](https://github.com/Kinasr/skills/issues/1).)*
