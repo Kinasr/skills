@@ -14,14 +14,15 @@ Use `./references/slice-rules.md` for heading anchor normalization, `epic`/origi
 ## 1. Run Context & Preflight
 
 1. **Resolve Git Context:** Inspect branch (`git rev-parse --abbrev-ref HEAD`) and working-tree status. Fall back to `detached@<short-sha>`, `<unborn-HEAD>`, or `<no-git>`.
-2. **Load Config or Infer Remote:**
+2. **Resolve Config or Remote:**
    - Read `.agents/work-tracking.md` (`Schema: 1`) directly if present (`Config: .agents/work-tracking.md`).
    - Otherwise inspect `git remote -v` + authenticated `gh`/`glab`:
      - If multiple GitHub/GitLab remotes exist (`origin`, `upstream`, etc.), ask the user which remote to target before proceeding.
      - If one remote matches, infer defaults (`Config: inferred (<remote>)`): `native_deps=false` unless native blocking APIs probe available, `Excluded Active/Terminal States` (`in-progress, in-review, done, closed`), `Workflow States` (`needs-info, ready:direct, ready:lite, ready:design`), `Ticket Types` (`bug, feature, enhancement, chore, docs, epic`), `Specs Path` (`docs/designs/`), `Linking Rule` (`Blocked by <ID>`, `Parent: <ID>`, `Related to <ID>`, `Supersedes <ID>`), `Max Backlog Scan` (`150`).
-   - If neither `.agents/work-tracking.md` nor an inferred remote resolves, **halt** and instruct the user: `run setup-flow (/kinasr-skills:setup-flow or /setup-flow)`.
-3. **Print Run Context Header (first output line):**
-   `to-tickets | Config: <source> | Branch: <branch-or-fallback>`
+   - If neither `.agents/work-tracking.md` nor an inferred remote resolves, set `Config: none`.
+3. **Print Run Context Header (before any halt or proposal):**
+   `to-tickets | Config: <.agents/work-tracking.md | inferred (<remote>) | none> | Branch: <branch-or-fallback>`
+   - If `Config: none`, **halt** immediately after emitting the header and instruct the user: `run setup-flow (/kinasr-skills:setup-flow or /setup-flow)`.
 4. **Probe CLI/MCP & Labels:** Verify tracker CLI/MCP auth and repo/board binding. Probe target-repo labels (`ready:direct`, `epic`, configured `Ticket Types`) and note any missing labels (to preview for creation) or unsupported native operations.
 
 ## 2. Untrusted Data & Query Safety
@@ -64,4 +65,4 @@ Accept one of three modes:
    - **Pre-Creation Duplicate Check:** Immediately before creating each `epic` or slice, check open tickets for a matching normalized title / spec anchor. On collision, skip creation, bind the existing ID into `created_ids` and all dependent edges, and log `SKIPPED (DUPLICATE_EXISTS)`.
    - **Prose + Native Dependencies:** Always write prose `Blocked by <resolved-ID>` (and `Parent:`, `Supersedes`, `Related to`) in the ticket body at creation even when `native_deps=true`, then bind native blocking/parent edges via `--body-file`, stdin, or JSON API payloads.
    - **Circuit Breaker (`CIRCUIT_OPEN`):** On systemic write errors (`401`, `403`, `429`, auth expiry, or unreachable API), stop further mutations immediately, mark remaining unapplied slices/edges `SKIPPED (CIRCUIT_OPEN)`, and record them in the resume receipt.
-4. **Execution Receipt:** Emit a summary receipt table (`target_id`, `operation`, `outcome`, `URL/path`, `error/resume detail`) plus a fenced JSON Execution Receipt (`created_ids`, `pending_slices`, `pending_edges`) usable via chat or `--resume <path>`. If any `Supersedes <ID>` edge was written, remind the user to run `backlog-audit (/kinasr-skills:backlog-audit or /backlog-audit)` to clean up superseded tickets.
+4. **Execution Receipt:** Emit a summary receipt table with canonical columns `target_id`, `operation`, `outcome` (uppercase tokens: `APPLIED`, `SKIPPED (DUPLICATE_EXISTS)`, `SKIPPED (CIRCUIT_OPEN)`), `URL/path`, `error/resume detail` plus a fenced JSON Execution Receipt (`created_ids`, `pending_slices`, `pending_edges`) usable via chat or `--resume <path>`. If any `Supersedes <ID>` edge was written, remind the user to run `backlog-audit (/kinasr-skills:backlog-audit or /backlog-audit)` to clean up superseded tickets.

@@ -25,13 +25,14 @@ export const DENYLISTED_PLANNER_COMMANDS = [
 ];
 
 export const FORBIDDEN_PATH_REGEX =
-  /(?:^|[\s(`"'])(?:\.\.\/|\.\/scripts\/|(?:references|scripts)\/)/m;
+  /(?:^|[\s(`"'])(?:\.\.[\/\\]|\.[\/\\]scripts[\/\\]|(?:references|scripts)[\/\\])/m;
 
 export const PRESCRIPTIVE_CODING_REGEX =
   /\b(write (failing )?unit tests? first|red-green-refactor|run tdd|enforce commit style|format pull request body)\b/i;
 
 const UNTRUSTED_DATA_SKILLS = new Set(['triage', 'backlog-audit', 'to-tickets']);
-const STATE_DRIFT_CIRCUIT_SKILLS = new Set(['triage', 'backlog-audit']);
+const STATE_DRIFT_SKILLS = new Set(['triage', 'backlog-audit']);
+const CIRCUIT_OPEN_SKILLS = new Set(['triage', 'backlog-audit', 'to-tickets']);
 const PROVENANCE_FOOTER_SKILLS = new Set(['triage', 'backlog-audit', 'handoff']);
 const PROVENANCE_FOOTER_REGEX =
   /(?:provenance\s+(?:\S+\s+){0,2}footer|<!--\s*kinasr-skills:|\[kinasr-skills:)/i;
@@ -383,7 +384,7 @@ function readQuotedScalar(lines, startIdx, firstLineRest, quoteChar, filePath, k
 }
 
 function parseFrontmatter(rawContent, filePath) {
-  const normalized = rawContent.replace(/\r\n/g, '\n');
+  const normalized = rawContent.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n');
   const lines = normalized.split('\n');
 
   if (lines.length < 3 || !/^---[ \t]*$/.test(lines[0])) {
@@ -583,11 +584,12 @@ export function validateSkillDir(skillDir) {
     assertNonEmptyRegularFile(targetPath, `${dirName}/references/${relTarget}`);
   }
 
-  // Validate boundaries across every .md file inside the skill directory.
+  // Validate non-emptiness and boundaries across every .md file inside the skill directory.
   const markdownFiles = collectMarkdownFiles(absSkillDir);
   const combinedParts = [];
   for (const mdFile of markdownFiles) {
-    const content = fs.readFileSync(mdFile, 'utf8');
+    const relLabel = path.relative(absSkillDir, mdFile) || path.basename(mdFile);
+    const content = assertNonEmptyRegularFile(mdFile, `${dirName}/${relLabel}`);
     validateMarkdownBoundaries(mdFile, content);
     combinedParts.push(content);
   }
@@ -600,13 +602,12 @@ export function validateSkillDir(skillDir) {
     );
   }
 
-  if (STATE_DRIFT_CIRCUIT_SKILLS.has(dirName)) {
-    if (!combinedText.includes('STATE_DRIFT')) {
-      throw new Error(`Skill "${dirName}" is missing required "STATE_DRIFT" contract marker`);
-    }
-    if (!combinedText.includes('CIRCUIT_OPEN')) {
-      throw new Error(`Skill "${dirName}" is missing required "CIRCUIT_OPEN" contract marker`);
-    }
+  if (STATE_DRIFT_SKILLS.has(dirName) && !combinedText.includes('STATE_DRIFT')) {
+    throw new Error(`Skill "${dirName}" is missing required "STATE_DRIFT" contract marker`);
+  }
+
+  if (CIRCUIT_OPEN_SKILLS.has(dirName) && !combinedText.includes('CIRCUIT_OPEN')) {
+    throw new Error(`Skill "${dirName}" is missing required "CIRCUIT_OPEN" contract marker`);
   }
 
   if (PROVENANCE_FOOTER_SKILLS.has(dirName) && !PROVENANCE_FOOTER_REGEX.test(combinedText)) {

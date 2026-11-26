@@ -86,9 +86,9 @@ Wait for explicit user confirmation before making any local file writes or remot
 
 Emit an Execution Receipt table summarizing every applied or skipped action:
 
-| target_id | operation | outcome | URL/path | detail |
+| target_id | operation | outcome | URL/path | error/resume detail |
 | --- | --- | --- | --- | --- |
-| `.agents/work-tracking.md` | write config | applied | `.agents/work-tracking.md` | `Schema: 1` |
+| `.agents/work-tracking.md` | write config | APPLIED | `.agents/work-tracking.md` | `Schema: 1` |
 
 Finish with harness-neutral next-step options (never auto-invoke another skill):
 - To triage open issues: `run triage (/kinasr-skills:triage or /triage)`

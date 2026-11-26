@@ -105,6 +105,6 @@ Only proceed with a remote post if `.agents/work-tracking.md` or an inferred `gh
    - Verify CLI/MCP auth and post via `--body-file`, stdin, or JSON API payload (using `--` option terminators where applicable; never interpolate raw comment text into shell strings).
    - Emit an Execution Receipt table:
 
-| target_id | operation | outcome | URL/path | detail |
+| target_id | operation | outcome | URL/path | error/resume detail |
 | --- | --- | --- | --- | --- |
-| `<ticket-id>` | post handoff comment | applied | `<comment-url>` | `<short-sha or no-sha>` |
+| `<ticket-id>` | post handoff comment | APPLIED | `<comment-url>` | `<short-sha or no-sha>` |
