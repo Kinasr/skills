@@ -588,7 +588,9 @@ export function validateSkillDir(skillDir) {
   const markdownFiles = collectMarkdownFiles(absSkillDir);
   const combinedParts = [];
   for (const mdFile of markdownFiles) {
-    const relLabel = path.relative(absSkillDir, mdFile) || path.basename(mdFile);
+    const relLabel = (path.relative(absSkillDir, mdFile) || path.basename(mdFile))
+      .split(path.sep)
+      .join('/');
     const content = assertNonEmptyRegularFile(mdFile, `${dirName}/${relLabel}`);
     validateMarkdownBoundaries(mdFile, content);
     combinedParts.push(content);
