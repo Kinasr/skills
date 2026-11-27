@@ -40,7 +40,7 @@ By default, `kinasr-skills` pairs smoothly with [EGM (Elephant-Goldfish Model)](
 | **Claude Code** | Executed (`2026-11-26`, `v0.1.0`) — see [#8](https://github.com/Kinasr/skills/issues/8) | Maintained | Verified `claude plugin marketplace add Kinasr/skills && claude plugin install kinasr-skills@kinasr-skills` (Claude Code `2.1.323`, 5 skills, 0 parse errors) and live GitHub (`gh`) Dry-Run + approved `Apply` smoke checks across all 5 skills, including opt-in `CLAUDE.md` `@AGENTS.md` imports and `Explore` subagent `triage`. |
 | **Codex CLI, Cursor, generic `skills/`** | Deferred to [#2](https://github.com/Kinasr/skills/issues/2) | Tracked in [#2](https://github.com/Kinasr/skills/issues/2) | Self-contained `skills/<name>/` directories preserve future multi-harness portability. |
 
-*(Built-in local Markdown file tracking is also deferred to [#1](https://github.com/Kinasr/skills/issues/1). Post-`v0.1.0` runtime smoke checks for `go-ahead` on Antigravity CLI and Claude Code are pending post-implementation execution.)*
+*(Built-in local Markdown file tracking is also deferred to [#1](https://github.com/Kinasr/skills/issues/1). Release `v0.2.0` adds `go-ahead` ([design spec](docs/designs/go-ahead.md)) with cross-OS CI validation passing across 6 skills; live runtime smoke checks for `go-ahead` on Antigravity CLI and Claude Code are pending post-release execution.)*
 
 ### Installation & Invocation
 

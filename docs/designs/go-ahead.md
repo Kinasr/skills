@@ -1,7 +1,7 @@
 # go-ahead: Parallel Execution Orchestrator Skill
 
 *   **Author:** kinasr
-*   **Status:** Implemented (runtime smoke checks pending)
+*   **Status:** Implemented (v0.2.0; runtime smoke checks pending)
 *   **Date:** 2026-11-27
 
 --------------------------------------------------------------------------------
@@ -131,7 +131,7 @@ skills/go-ahead/
   │
   ▼
 [GATE 1: Propose -> Approve -> Apply (Dry-Run)]
-  ├─ Show wave plan, verified/edited test command, integration_branch name (go-ahead/<slug>-<YYYYMMDD>),
+  ├─ Show wave plan, verified/edited test command, integration_branch name (go-ahead/<slug>-<YYYYMMDD> or go-ahead/<primary-key>-<slug>-<YYYYMMDD> on custom),
   │  flagged non-maintainer/unverified bodies & skipped comments (opt-in/drop -> cascade UPSTREAM_UNRESOLVED),
   │  pre-authorized hard-blocked paths, and compile approved sanitized Task Briefs
   └─ Declined or 0 eligible tickets -> HALT (zero branches, zero workers)
@@ -329,7 +329,7 @@ None.
 
 ## Detailed Implementation Plan
 
-All changes required to ship `go-ahead` as the 6th self-contained skill with validator, test, and documentation parity (8 files total: 4 created, 4 modified across 3 ordered checkpoints; `plugin.json`, `.claude-plugin/*.json`, `.agents/work-tracking.md`, and the 5 existing skills require zero edits).
+All changes required to ship `go-ahead` as the 6th self-contained skill with validator, test, and documentation parity (8 implementation files plus this design doc — 9 files total: 5 created, 4 modified across 3 ordered checkpoints; `plugin.json` and `.claude-plugin/plugin.json` bumped to `0.2.0` for release packaging; `.claude-plugin/marketplace.json`, `.agents/work-tracking.md`, and the 5 existing skills require zero behavioral edits).
 
 ### Phase 1: Create `go-ahead` Skill Files (Items 1–4)
 
@@ -341,9 +341,10 @@ All changes required to ship `go-ahead` as the 6th self-contained skill with val
     *   Declare YAML frontmatter: `name: go-ahead`, non-empty `description`, `license: MIT`, and `disable-model-invocation: true`.
     *   State hard boundaries: never prescribe worker coding practices, TDD workflows, commit styles, or PR body templates beyond `./AGENTS.md` `Closing Rule`; never auto-merge; never mutate `in-progress` labels mid-run; never auto-invoke sibling skills and always print harness-neutral next-step commands.
     *   **Section 1 — Run Context Header & Preflight:**
-        *   Run the zero-code-read subagent probe *before reading any repository source code* (routing unavailable hosts to `./references/wave-planning.md`).
         *   Load `.agents/work-tracking.md` (`Schema: 1`) or zero-config inferred defaults matching `triage`/`to-tickets` (`Tracker` from `git remote -v` `github`/`gitlab`; `Untriaged Signal`: missing workflow label; `Workflow States`: `needs-info, ready:direct, ready:lite, ready:design`; `Excluded Active/Terminal States`: `in-progress, in-review, done, closed`; `Priority Labels`: `none`; `Passive WIP Signal`: `open linked PRs`; `Max Backlog Scan`: `150`; disambiguating multiple remotes or halting with `run setup-flow` when `Config: none`).
-        *   Resolve git state (`<branch>`, `detached@<short-sha>`, `<unborn-HEAD>`, `<no-git>`), print Run Context Header (`go-ahead | Config: ... | Branch: ...`), halt on `<no-git>` or `<unborn-HEAD>`, enforce a strictly clean tree (`git status --porcelain` empty), fetch/resolve `base_sha` from `origin/<default-branch>` (or confirmed local branch when no remote exists), verify CLI/MCP auth, and route `--resume [<integration_branch> | path | json]` to `./references/execution-and-resume.md`.
+        *   Resolve git state (`<branch>`, `detached@<short-sha>`, `<unborn-HEAD>`, `<no-git>`), print Run Context Header (`go-ahead | Config: ... | Branch: ...`), halt on `Config: none`, `<no-git>`, `<unborn-HEAD>`, or dirty tree (`git status --porcelain` non-empty).
+        *   Verify CLI/MCP auth and fetch/resolve `base_sha` from `origin/<default-branch>` (or confirmed local branch when no remote exists).
+        *   Run the zero-code-read subagent probe *before reading any repository source code* (routing unavailable hosts to `./references/wave-planning.md`), and route `--resume [<integration_branch> | path | json]` to `./references/execution-and-resume.md`.
     *   **Section 2 — Shared Safety & Public-Repo Trust Contract:** Reference the rules defined in Technical Plan §4–§5 (`<untrusted_ticket_data>`, exact GitHub/GitLab/`custom` maintainer allowlists, syntactic ID allowlists, safe argument passing, sanitized Task Briefs, local-only worker boundaries, `STATE_DRIFT`, `CIRCUIT_OPEN`, and branch-free provenance footers with `<YYYY-MM-DDTHH:MM:SSZ>` timestamps).
     *   **Section 3 — Phase State-Machine Router:** Route strictly via `./references/wave-planning.md`, `./references/execution-and-resume.md`, and `./references/review-and-pr.md`, complying with `FORBIDDEN_PATH_REGEX`, `PRESCRIPTIVE_CODING_REGEX`, and `DENYLISTED_PLANNER_COMMANDS`.
 
@@ -356,7 +357,7 @@ All changes required to ship `go-ahead` as the 6th self-contained skill with val
     *   **Discovery, Caps & Explicit Skips:** Bounded `Max Backlog Scan: 150` (oldest-first query ordering + truncation note); apply `6`-ticket unscoped cap post-filtering and `10` per-run cap on explicit IDs; disclose disqualified explicit IDs and stop cleanly on `0` eligible tickets; enforce `4 KB` metadata cap/ticket.
     *   **Direct `Blocked by` Inspection (`<= 30` external IDs):** Combine `native_deps` (`true`) + fenced-code-block-aware prose `Blocked by:?`; exclude open or `UNVERIFIED (REF_CAP_REACHED)` external blockers; route candidate cycles/graph anomalies to `backlog-audit`; keep intra-batch `Blocked by` chains ordered across waves and cascade `SKIPPED (UPSTREAM_UNRESOLVED)` transitively whenever an upstream slice drops or drifts.
     *   **Wave Partitioning (`2–3` Workers/Wave):** Topological layers + file/module hints from `triage` 3-line plan comments, acceptance criteria, or validated repo-relative `Spec:` pointers; keep tickets lacking 3-line plans eligible via body hints or `COLLISION_REQUEUE`.
-    *   **Gate 1 (`Propose -> Approve -> Apply`) & Task Briefs:** Apply exact GitHub/GitLab/`custom` author allowlists; flag non-maintainer/unverified bodies & excluded comments for opt-in/drop; confirm verification command(s); derive `<slug>` (lowercase kebab-case `<= 32` chars avoiding bare ticket-key/date tokens) for `go-ahead/<slug>-<YYYYMMDD>` (`-2`/`-3` suffix on collision); confirm hard-blocked sensitive path pre-authorizations; compile approved **Task Briefs** (`ticket_id`, `approved_objective`, `acceptance_criteria`, validated `Spec:` path, `Wave k-1` diff summary, `pre_authorized_paths`).
+    *   **Gate 1 (`Propose -> Approve -> Apply`) & Task Briefs:** Apply exact GitHub/GitLab/`custom` author allowlists; flag non-maintainer/unverified bodies & excluded comments for opt-in/drop; confirm verification command(s); derive `<slug>` (lowercase kebab-case `<= 32` chars avoiding bare ticket-key/date tokens) for `go-ahead/<slug>-<YYYYMMDD>` (or `go-ahead/<primary-key>-<slug>-<YYYYMMDD>` on `custom`, `-2`/`-3` suffix on collision); confirm hard-blocked sensitive path pre-authorizations; compile approved **Task Briefs** (`ticket_id`, `approved_objective`, `acceptance_criteria`, validated `Spec:` path, `Wave k-1` diff summary, `pre_authorized_paths`).
 
 #### 3. [`skills/go-ahead/references/execution-and-resume.md`](../../skills/go-ahead/references/execution-and-resume.md) (Create)
 

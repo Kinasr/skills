@@ -20,7 +20,7 @@ After Phase 1 Preflight has emitted the Run Context Header and resolved config a
 
 1. **Bounded Backlog Scan & Ranking:**
    - Unscoped runs: fetch up to `Max Backlog Scan: 150` open issues (oldest-first query ordering where supported; disclose exact scan coverage and `TRUNCATED` status when capped).
-   - Explicit ID runs (`go-ahead #12 #13 ...`): validate every supplied ID via Section 2 syntactic allowlists and fetch metadata (`4 KB` cap per ticket). Reject unsupported non-ID scope arguments (such as `<epic-or-spec>` file paths) with an explicit notice stating `go-ahead` accepts only unscoped runs or explicit ticket IDs (`<epic-or-spec>` scoping is deferred in v1).
+   - Explicit ID runs (`go-ahead #12 #13 ...`): validate every supplied ID via `SKILL.md` Section 2 syntactic allowlists and fetch metadata (`4 KB` cap per ticket). Reject unsupported non-ID scope arguments (such as `<epic-or-spec>` file paths) with an explicit notice stating `go-ahead` accepts only unscoped runs or explicit ticket IDs (`<epic-or-spec>` scoping is deferred in v1).
    - Exclude non-`ready:direct` tickets, `epic`, `Excluded Active/Terminal States`, active `Passive WIP Signal` (`open linked PRs`), and unresolved `STATE_CONFLICT`.
    - Rank eligible items: `bug` type -> `Priority Labels` left-to-right (skipping `none`) -> oldest `created_at` ascending.
    - Apply caps **after** eligibility and blocker filtering: default cap `6` for unscoped runs (disclosing how many eligible tickets remain queued), or **per-run cap of 10** for explicit IDs (disclosing any disqualified explicit IDs and reasons; if `> 10` eligible explicit IDs are supplied, prompt the user to narrow to `<= 10` or take the top 10).
