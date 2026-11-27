@@ -6,7 +6,7 @@ Sub-protocol for Phase 4 and Gate 2. Never auto-merge to the default branch, and
 
 ## 1. Phase 4: Single Fresh-Context Read-Only Adversarial PR Review
 
-Skip Phase 4 and Gate 2 PR creation entirely if `merged_tickets.length === 0`.
+Skip Phase 4 and Gate 2 PR/push creation if `merged_tickets.length === 0`, while still surfacing any collected `out_of_scope_bugs` for optional `bug`-only Gate 2 approval or summary when non-empty.
 
 1. **Dispatch Read-Only Reviewer Subagent:**
    - Spawn **1** brand-new, read-only subagent (`research` on Antigravity, `Explore` on Claude Code, read-only prompt elsewhere) with zero prior execution context.
@@ -42,7 +42,7 @@ Present in sanitized Markdown and wait for explicit approval:
 3. **Push Target & Combined Pull Request Proposal (`Closing Rule`):**
    - Target branch: `origin/<default-branch>` (omit remote push and print local summary if repository is local-only without `origin`).
    - `github` / `gitlab`: single PR from `integration_branch` to `<default-branch>` listing `Closes #<N>` per verified merged ticket in the PR body (via `--body-file`, stdin, or JSON payload).
-   - `custom` tracker: include primary tracker key/`<slug>` in branch name, up to `3` tracker keys in PR title, and full key list in PR body; if CLI/MCP lacks PR creation support, print manual push/PR instructions with the prepared title and body.
+   - `custom` tracker: uses the `go-ahead/<primary-key>-<slug>-<YYYYMMDD>` branch created in Phase 3 (`<= 3` tracker keys in PR title, full key list in PR body); if CLI/MCP lacks PR creation support, print manual push/PR instructions with the prepared title and body.
    - Explicit statement: **never auto-merge to default branch**.
 4. **End-of-Run Untriaged `bug`-Only Out-of-Scope Bug Proposals:**
    - Surface deduplicated `out_of_scope_bugs` collected from worker JSON envelopes for optional user approval (assign `bug` type label **only** — zero `ready:*` or `needs-info` labels so the user runs `triage` later):

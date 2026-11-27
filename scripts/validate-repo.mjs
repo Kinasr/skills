@@ -573,19 +573,9 @@ export function validateSkillDir(skillDir) {
     );
   }
 
-  // Verify all ./references/<file>.md links in SKILL.md exist inside this skill directory.
+  // Verify ./references/<file>.md links and boundaries across every .md file inside the skill directory.
   const refRegex = /\.\/references\/([A-Za-z0-9._/-]+\.md)/g;
-  for (const match of skillMdContent.matchAll(refRegex)) {
-    const relTarget = match[1];
-    const targetPath = path.resolve(absSkillDir, 'references', relTarget);
-    const referencesRoot = path.resolve(absSkillDir, 'references') + path.sep;
-    if (!targetPath.startsWith(referencesRoot)) {
-      throw new Error(`Invalid ./references/ path "${match[0]}" in ${skillMdPath}`);
-    }
-    assertNonEmptyRegularFile(targetPath, `${dirName}/references/${relTarget}`);
-  }
-
-  // Validate non-emptiness and boundaries across every .md file inside the skill directory.
+  const referencesRoot = path.resolve(absSkillDir, 'references') + path.sep;
   const markdownFiles = collectMarkdownFiles(absSkillDir);
   const combinedParts = [];
   for (const mdFile of markdownFiles) {
@@ -593,6 +583,14 @@ export function validateSkillDir(skillDir) {
       .split(path.sep)
       .join('/');
     const content = assertNonEmptyRegularFile(mdFile, `${dirName}/${relLabel}`);
+    for (const match of content.matchAll(refRegex)) {
+      const relTarget = match[1];
+      const targetPath = path.resolve(absSkillDir, 'references', relTarget);
+      if (!targetPath.startsWith(referencesRoot)) {
+        throw new Error(`Invalid ./references/ path "${match[0]}" in ${mdFile}`);
+      }
+      assertNonEmptyRegularFile(targetPath, `${dirName}/references/${relTarget}`);
+    }
     validateMarkdownBoundaries(mdFile, content);
     combinedParts.push(content);
   }

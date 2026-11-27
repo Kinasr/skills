@@ -19,8 +19,7 @@ Orchestrate unblocked `ready:direct` tickets across isolated worktrees in topolo
 
 ## 1. Run Context Header & Preflight
 
-1. **Zero-Code-Read Subagent Probe (Before Reading Repository Source Code):** Inspect host tool capabilities for isolated subagents (such as `invoke_subagent` or `Agent`/`Task`). If unavailable, follow the subagent-less halt protocol in `./references/wave-planning.md`.
-2. **Resolve Config or Inferred Remote:**
+1. **Resolve Config or Inferred Remote:**
    - Read `.agents/work-tracking.md` (`Schema: 1`) directly if present (`Config: .agents/work-tracking.md`).
    - Otherwise inspect `git remote -v` and authenticated `gh`/`glab`:
      - If multiple remotes match, ask the user to disambiguate before proceeding.
@@ -32,14 +31,16 @@ Orchestrate unblocked `ready:direct` tickets across isolated worktrees in topolo
        - `Passive WIP Signal`: `open linked PRs`; `Specs Path`: `docs/designs/`.
        - `Linking Rule`: `Blocked by <ID>`, `Parent: <ID>`, `Related to <ID>`, `Supersedes <ID>`; `Max Backlog Scan`: `150`.
    - If neither resolves, set `Config: none`.
-3. **Resolve Git State & Emit Run Context Header:**
+2. **Resolve Git State & Emit Run Context Header:**
    - Inspect branch (`<branch>`, `detached@<short-sha>`, `<unborn-HEAD>`, or `<no-git>`) and working tree status (`git status --porcelain`).
    - Always print first: `go-ahead | Config: <.agents/work-tracking.md | inferred (<remote>) | none> | Branch: <branch-or-fallback>`
    - If `Config: none`, halt and instruct: `run setup-flow (/kinasr-skills:setup-flow or /setup-flow)`.
    - If `<no-git>`, `<unborn-HEAD>`, or dirty working tree (`git status --porcelain` non-empty), halt without modifying files or branches.
-4. **Probe Remote Auth & Target Baseline:**
+3. **Probe Remote Auth & Target Baseline:**
    - Verify CLI/MCP auth and repository/board binding. When `origin` exists, run `git fetch origin` and resolve `base_sha` dynamically from `origin/<default-branch>` via `git symbolic-ref refs/remotes/origin/HEAD` (fallback `origin/main`, `origin/master`, or prompt user). If no `origin` remote exists, require explicit confirmation to branch from the local default branch and skip remote push at Gate 2.
-   - If invoked with `--resume [<integration_branch> | path | json]`, jump straight to `./references/execution-and-resume.md`.
+4. **Zero-Code-Read Subagent Probe & `--resume` Routing (Before Reading Repository Source Code):**
+   - Inspect host tool capabilities for isolated subagents (such as `invoke_subagent` or `Agent`/`Task`). If unavailable, follow the subagent-less halt protocol in `./references/wave-planning.md` with zero source-code reads.
+   - Otherwise, if invoked with `--resume [<integration_branch> | path | json]`, jump straight to `./references/execution-and-resume.md`.
 
 ---
 

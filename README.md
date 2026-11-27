@@ -19,7 +19,7 @@ Work-orchestration and session-hygiene skills around AI coding agents and extern
 | `triage` | Classify 1 ticket or a bounded batch (`<=10` tickets in topological waves) into `needs-info`, `ready:direct` (with a 3-line plan), `ready:lite`, or `ready:design`, recording `Blocked by` edges. |
 | `backlog-audit` | Run a bounded single-repo dependency graph, open PR/WIP, conflict, and staleness audit without deep code reads; separates **Actionable Frontier**, **Active WIP (Open PR / In-Progress)**, and **Blocked Queue**. |
 | `to-tickets` | Slice a finished design spec or inline Lite plan into vertical `ready:direct` tickets in topological order without mutating existing tickets (supports `--resume`). |
-| `go-ahead` | Orchestrate unblocked `ready:direct` ticket waves across isolated worktrees, run one read-only Adversarial PR Review pass, open one combined PR (`Closing Rule`, never auto-merging), and propose untriaged `bug`-only out-of-scope issues (supports `--resume`). |
+| `go-ahead` | *(Optional)* Orchestrate unblocked `ready:direct` ticket waves across isolated worktrees, run one read-only Adversarial PR Review pass, open one combined PR (`Closing Rule`, never auto-merging), and propose untriaged `bug`-only out-of-scope issues (supports `--resume`). |
 | `handoff` | Print a git-grounded session handoff snapshot directly to chat first, and optionally preview a `[REDACTED]` secret-scrubbed remote ticket comment for approval before posting. |
 
 ### Pairing with Planners

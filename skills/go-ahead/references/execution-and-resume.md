@@ -7,7 +7,7 @@ Sub-protocol for Phase 3 and `--resume`. Coding workers are strictly local-only 
 ## 1. Preflight Baseline & Git-Native Common-Dir Snapshot
 
 1. **Integration Branch & Baseline Check:**
-   - Create and check out `integration_branch` (`go-ahead/<slug>-<YYYYMMDD>`) from `base_sha`.
+   - Create and check out `integration_branch` (`go-ahead/<slug>-<YYYYMMDD>` on `github`/`gitlab`, or `go-ahead/<primary-key>-<slug>-<YYYYMMDD>` on `custom`) from `base_sha`.
    - Record `git rev-parse HEAD` as initial `<pre-wave-sha>`.
    - If Gate 1 confirmed a verification command(s), run it once on `base_sha`:
      - **Pass:** record `VERIFIED_ON_CURRENT_DIFF`.
@@ -31,7 +31,7 @@ Sub-protocol for Phase 3 and `--resume`. Coding workers are strictly local-only 
    - If host-native isolated worktrees cannot be provisioned under runtime limits, run one worker at a time:
      1. Create ephemeral branch `go-ahead-wt/<ticket-id>` from current `integration_branch` HEAD (`git checkout -b go-ahead-wt/<ticket-id>`).
      2. Dispatch one worker with its sanitized Task Brief.
-     3. Return to `integration_branch` after inspecting `<integration-HEAD>..<worker-HEAD>`; if aborted/rejected, roll back uncommitted worktree dirt (`git reset --hard && git clean -fd`), check out `integration_branch`, and delete `go-ahead-wt/<ticket-id>` (`git branch -D`).
+     3. Verify `git status --porcelain` is clean before returning to `integration_branch` (after confirming edits are committed on `OK`, clean any leftover untracked build artifacts via `git clean -fd`; if aborted/rejected, run `git reset --hard && git clean -fd`), inspect `<integration-HEAD>..<worker-HEAD>`, check out `integration_branch`, and delete `go-ahead-wt/<ticket-id>` (`git branch -D`) if not merged/retained.
 3. **Mandatory Ephemeral Cleanup:** Remove temporary worker worktrees (`git worktree remove` / `git worktree prune`) and `go-ahead-wt/*` branches after each wave settles and on any halt, preserving `integration_branch`.
 
 ---
@@ -79,16 +79,16 @@ Before executing Wave `k` merges, record `<pre-wave-k-sha>` (`git rev-parse HEAD
    - **Review-Gated Build/Lock Manifests** (root or nested): `package.json`, `package-lock.json`, `pnpm-lock.yaml`, `yarn.lock`, `Cargo.toml`, `Cargo.lock`, `go.mod`, `go.sum`, `pyproject.toml`, `requirements*.txt`, `Gemfile*`, `Makefile`. If not pre-authorized in Gate 1, quarantine the worker branch and prompt user per diff to approve merge or drop ticket (`SKIPPED (UPSTREAM_UNRESOLVED)` cascade if dropped).
 4. **Trial Single-Commit Squash Merge & Collision Requeue:**
    - Run `git merge --squash <worker-head>`:
-     - On conflict with an earlier sibling in the same wave, abort (`git reset --merge`, or `git reset --hard HEAD && git clean -fd` if staged) and place the colliding ticket in `COLLISION_REQUEUE` (`0` retries consumed) to re-run once against updated `integration_branch` HEAD after the rest of Wave `k` merges finish.
+     - On conflict with an earlier sibling in the same wave, abort (`git reset --merge`, or `git reset --hard HEAD && git clean -fd` if staged) and place the colliding ticket in `COLLISION_REQUEUE` (`0` retries consumed) to execute sequentially (`concurrency = 1`) after existing non-conflicting Wave `k` commits pass the Wave Integration Gate.
      - On clean squash, commit one commit: `git commit -m "<ticket-id>: <sanitized summary>"`.
 5. **Wave Integration Gate & Bounded Retries (`<= 3` Attempts):**
-   - After all non-conflicting Wave `k` merges (and any `COLLISION_REQUEUE` merges) land on `integration_branch`, run the Gate 1-confirmed verification command(s) **once** on `integration_branch` HEAD (`FAILED_ON_CURRENT_DIFF` baseline failures permitted only without new failure signatures).
-   - **If Wave Integration Gate passes:** mark Wave `k` tickets landed, generate compact Wave `k` merged-diff summary for Wave `k+1`, and advance.
-   - **If Wave Integration Gate fails:** bisect or replay Wave `k` commits individually from `<pre-wave-k-sha>` to isolate the failing commit, reset `integration_branch` excluding the culprit (`git reset --hard` + replay passing sibling commits), increment that ticket's implementation/test retry counter, and retry it in a fresh isolated worktree from updated `integration_branch` HEAD (with `40`-line failure tail) up to **3 attempts** total per ticket.
-   - Re-verify `Wave k` via Wave Integration Gate once repaired commits land.
+   - After all non-conflicting Wave `k` merges land on `integration_branch`, run the Gate 1-confirmed verification command(s) **once** on `integration_branch` HEAD (`FAILED_ON_CURRENT_DIFF` baseline failures permitted only without new failure signatures).
+   - Once green, execute any `COLLISION_REQUEUE` tickets sequentially (`concurrency = 1`) against the verified updated `integration_branch` HEAD, merge cleanly, and re-run the Wave Integration Gate.
+   - **If any Wave Integration Gate fails:** use cumulative `git bisect` or incremental replay from `<pre-wave-k-sha>` (`commit 1`, `commit 1 + commit 2`, ...) so interaction regressions are caught, reset `integration_branch` excluding the failing commit (`git reset --hard` + replay passing sibling commits), increment that ticket's implementation/test retry counter, and retry it in a fresh isolated worktree from updated `integration_branch` HEAD (with `40`-line failure tail) up to **3 attempts** total per ticket.
+   - Generate a compact Wave `k` merged-diff summary for Wave `k+1` once the Wave Integration Gate is green.
 6. **Halt Conditions:**
    - Halt immediately on `BLOCKED_EXTERNAL`, `PERMISSION_REQUIRED`, `ENV_SETUP_REQUIRED` (advise dependency setup or `concurrency = 1`), or exhausting `3` implementation/test retries (or persistent `ERROR`). Clean up ephemeral worker worktrees/branches while preserving `integration_branch`, and emit a Resume Pointer JSON.
-   - If all waves finish with `merged_tickets.length === 0`, skip Phase 4 and Gate 2 push/PR completely, print skipped/halted summary, and stop.
+   - If all waves finish with `merged_tickets.length === 0`, skip Phase 4 and Gate 2 push/PR completely, print the skipped/halted summary (and surface any collected `out_of_scope_bugs` for optional `bug`-only Gate 2 filing or summary if non-empty), and stop.
 
 ---
 
@@ -112,9 +112,9 @@ Emit this minimal versioned fenced JSON **Resume Pointer** only on halt, Gate 2 
 ```
 
 **On `--resume`:**
-1. Parse supplied `<integration_branch>`, pointer file path, or inline/session fenced JSON. When JSON/path is provided, require `schema === 1` and `skill === "go-ahead"`, validate all IDs against Section 2 allowlists, and sanitize strings.
-2. Verify `<integration_branch>` exists locally, `git status --porcelain` is clean, and `<base_sha>` is an ancestor of `<integration_branch>` HEAD.
-3. Derive already-landed tickets from `<base_sha>..HEAD` commit subjects on `<integration_branch>`.
+1. Parse supplied `<integration_branch>`, pointer file path, or inline/session fenced JSON. When JSON/path is provided, require `schema === 1` and `skill === "go-ahead"`, validate all IDs against Section 2 allowlists, and sanitize strings. When only `<integration_branch>` is provided without a pointer, resolve `base_sha` via `git merge-base <default-branch> <integration_branch>` and default `remaining_ticket_ids` to `[]` unless supplied or confirmed.
+2. Verify `<integration_branch>` exists locally, `git status --porcelain` is clean, and `<base_sha>` is an ancestor of `<integration_branch>` HEAD, then explicitly check out `<integration_branch>` (`git checkout <integration_branch>`).
+3. Derive already-landed tickets from `<base_sha>..HEAD` commit subjects on `<integration_branch>`, excluding any net-reverted tickets (matching `^Revert "<ticket-id>:`).
 4. If `origin` exists, `git fetch origin` and check whether `origin/<default-branch>` advanced beyond `base_sha`; warn the user and offer to rebase, continue on `base_sha`, or abort.
 5. Re-check live `STATE_DRIFT` on `remaining_ticket_ids` (cascading `SKIPPED (UPSTREAM_UNRESOLVED)` to dependents if drifted).
 6. **Re-entry routing:**

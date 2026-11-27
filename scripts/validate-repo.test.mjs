@@ -899,6 +899,16 @@ describe('validate-repo skill structure, frontmatter, boundaries, and contracts'
       );
       assert.throws(() => validateSkillDir(tddSkillDir), /Prescriptive coding\/TDD directive/);
     }
+
+    const brokenSubRefDir = createValidSkill(makeTempDir('go-ahead-broken-subref-'), 'go-ahead');
+    fs.appendFileSync(
+      path.join(brokenSubRefDir, 'references', 'execution-and-resume.md'),
+      '\nNext step: `./references/missing.md`.\n',
+    );
+    assert.throws(
+      () => validateSkillDir(brokenSubRefDir),
+      /Missing required file go-ahead\/references\/missing\.md/,
+    );
   });
 
   it('exits non-zero from CLI on invalid fixture or unknown flag', () => {
