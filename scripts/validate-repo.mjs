@@ -9,6 +9,7 @@ export const REQUIRED_SKILLS = [
   'backlog-audit',
   'to-tickets',
   'handoff',
+  'go-ahead',
 ];
 
 export const DENYLISTED_PLANNER_COMMANDS = [
@@ -30,10 +31,10 @@ export const FORBIDDEN_PATH_REGEX =
 export const PRESCRIPTIVE_CODING_REGEX =
   /\b(write (failing )?unit tests? first|red-green-refactor|run tdd|enforce commit style|format pull request body)\b/i;
 
-const UNTRUSTED_DATA_SKILLS = new Set(['triage', 'backlog-audit', 'to-tickets']);
-const STATE_DRIFT_SKILLS = new Set(['triage', 'backlog-audit']);
-const CIRCUIT_OPEN_SKILLS = new Set(['triage', 'backlog-audit', 'to-tickets']);
-const PROVENANCE_FOOTER_SKILLS = new Set(['triage', 'backlog-audit', 'handoff']);
+const UNTRUSTED_DATA_SKILLS = new Set(['triage', 'backlog-audit', 'to-tickets', 'go-ahead']);
+const STATE_DRIFT_SKILLS = new Set(['triage', 'backlog-audit', 'go-ahead']);
+const CIRCUIT_OPEN_SKILLS = new Set(['triage', 'backlog-audit', 'to-tickets', 'go-ahead']);
+const PROVENANCE_FOOTER_SKILLS = new Set(['triage', 'backlog-audit', 'handoff', 'go-ahead']);
 const PROVENANCE_FOOTER_REGEX =
   /(?:provenance\s+(?:\S+\s+){0,2}footer|<!--\s*kinasr-skills:|\[kinasr-skills:)/i;
 

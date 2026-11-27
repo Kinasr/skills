@@ -160,6 +160,20 @@ function createValidSkill(skillsBaseDir, skillName) {
       ].join('\n'),
       refBody: null,
     },
+    'go-ahead': {
+      desc: '"Orchestrate parallel ready:direct ticket waves across isolated worktrees, run a read-only adversarial PR review, and open one combined PR."',
+      refs: {
+        'wave-planning.md': '# Wave Planning\n\nWave discovery and Gate 1 rules.\n',
+        'execution-and-resume.md': '# Execution and Resume\n\nWorktrees, merges, and `--resume`.\n',
+        'review-and-pr.md': '# Review and PR\n\nAdversarial review, Gate 2, and `CIRCUIT_OPEN`.\n',
+      },
+      body: [
+        'Wrap external text in `<untrusted_ticket_data>` tags.',
+        'Handle `STATE_DRIFT` and `CIRCUIT_OPEN`.',
+        'Append a branch-free provenance footer: `<!-- kinasr-skills: go-ahead | <YYYY-MM-DDTHH:MM:SSZ> | <short-sha|no-sha> -->`.',
+        'See `./references/wave-planning.md`, `./references/execution-and-resume.md`, and `./references/review-and-pr.md`.',
+      ].join('\n'),
+    },
   };
 
   const cfg = configs[skillName];
@@ -180,6 +194,11 @@ function createValidSkill(skillsBaseDir, skillName) {
   writeFile(path.join(skillDir, 'SKILL.md'), skillMd);
   if (cfg.ref) {
     writeFile(path.join(skillDir, 'references', cfg.ref), cfg.refBody);
+  }
+  if (cfg.refs) {
+    for (const [refName, refContent] of Object.entries(cfg.refs)) {
+      writeFile(path.join(skillDir, 'references', refName), refContent);
+    }
   }
   return skillDir;
 }
@@ -772,32 +791,52 @@ describe('validate-repo skill structure, frontmatter, boundaries, and contracts'
     }
   });
 
-  it('rejects missing cross-skill contract markers across triage, backlog-audit, to-tickets, and handoff', () => {
+  it('rejects missing cross-skill contract markers across triage, backlog-audit, to-tickets, handoff, and go-ahead', () => {
     const cases = [
       ['triage', '<untrusted_ticket_data>', /missing required "<untrusted_ticket_data>"/],
       ['backlog-audit', '<untrusted_ticket_data>', /missing required "<untrusted_ticket_data>"/],
       ['to-tickets', '<untrusted_ticket_data>', /missing required "<untrusted_ticket_data>"/],
+      ['go-ahead', '<untrusted_ticket_data>', /missing required "<untrusted_ticket_data>"/],
       ['triage', 'STATE_DRIFT', /missing required "STATE_DRIFT"/],
       ['backlog-audit', 'STATE_DRIFT', /missing required "STATE_DRIFT"/],
+      ['go-ahead', 'STATE_DRIFT', /missing required "STATE_DRIFT"/],
       ['triage', 'CIRCUIT_OPEN', /missing required "CIRCUIT_OPEN"/],
       ['backlog-audit', 'CIRCUIT_OPEN', /missing required "CIRCUIT_OPEN"/],
       ['to-tickets', 'CIRCUIT_OPEN', /missing required "CIRCUIT_OPEN"/],
+      ['go-ahead', 'CIRCUIT_OPEN', /missing required "CIRCUIT_OPEN"/],
       ['triage', 'provenance footer', /missing required remote provenance footer/],
       ['backlog-audit', 'provenance footer', /missing required remote provenance footer/],
       ['handoff', 'provenance footer', /missing required remote provenance footer/],
+      ['go-ahead', 'provenance footer', /missing required remote provenance footer/],
     ];
+
+    const stripMarkerAcrossSkillDir = (dir, marker) => {
+      const stripContent = (text) =>
+        text
+          .replaceAll(marker, 'REMOVED_MARKER')
+          .replaceAll('<!-- kinasr-skills:', '<!-- removed:')
+          .replaceAll('[kinasr-skills:', '[removed:');
+
+      const walk = (currentDir) => {
+        for (const entry of fs.readdirSync(currentDir)) {
+          const full = path.join(currentDir, entry);
+          const stat = fs.lstatSync(full);
+          if (stat.isDirectory()) {
+            walk(full);
+          } else if (stat.isFile() && entry.toLowerCase().endsWith('.md')) {
+            writeFile(full, stripContent(fs.readFileSync(full, 'utf8')));
+          }
+        }
+      };
+
+      walk(dir);
+    };
 
     for (const [skillName, marker, expectedErr] of cases) {
       // Check via validateSkillDir
       const isolatedParent = makeTempDir(`contract-skill-${skillName}-`);
       const skillDir = createValidSkill(isolatedParent, skillName);
-      const skillMdPath = path.join(skillDir, 'SKILL.md');
-      const updated = fs
-        .readFileSync(skillMdPath, 'utf8')
-        .replaceAll(marker, 'REMOVED_MARKER')
-        .replaceAll('<!-- kinasr-skills:', '<!-- removed:')
-        .replaceAll('[kinasr-skills:', '[removed:');
-      writeFile(skillMdPath, updated);
+      stripMarkerAcrossSkillDir(skillDir, marker);
 
       assert.throws(
         () => validateSkillDir(skillDir),
@@ -807,12 +846,58 @@ describe('validate-repo skill structure, frontmatter, boundaries, and contracts'
 
       // Check via validateRepo
       const repoRoot = createFullValidRepo(makeTempDir(`contract-repo-${skillName}-`));
-      writeFile(path.join(repoRoot, 'skills', skillName, 'SKILL.md'), updated);
+      stripMarkerAcrossSkillDir(path.join(repoRoot, 'skills', skillName), marker);
       assert.throws(
         () => validateRepo(repoRoot),
         expectedErr,
         `validateRepo should fail when ${skillName} lacks ${marker}`,
       );
+    }
+  });
+
+  it('enforces required directory, multi-file references, and boundaries for go-ahead', () => {
+    const missingGoAheadRoot = createFullValidRepo(makeTempDir('missing-go-ahead-'));
+    fs.rmSync(path.join(missingGoAheadRoot, 'skills', 'go-ahead'), {
+      recursive: true,
+      force: true,
+    });
+    assert.throws(
+      () => validateRepo(missingGoAheadRoot),
+      /Missing required skill directory: skills\/go-ahead/,
+    );
+    assert.equal(validateRepo(missingGoAheadRoot, { allowMissingSkills: true }).ok, true);
+
+    const refNames = ['wave-planning.md', 'execution-and-resume.md', 'review-and-pr.md'];
+    for (const refName of refNames) {
+      const missingRefDir = createValidSkill(makeTempDir('go-ahead-missing-ref-'), 'go-ahead');
+      fs.rmSync(path.join(missingRefDir, 'references', refName));
+      assert.throws(
+        () => validateSkillDir(missingRefDir),
+        new RegExp(`Missing required file go-ahead/references/${refName.replace('.', '\\.')}`),
+      );
+
+      const blankRefDir = createValidSkill(makeTempDir('go-ahead-blank-ref-'), 'go-ahead');
+      writeFile(path.join(blankRefDir, 'references', refName), '  \r\n\t ');
+      assert.throws(
+        () => validateSkillDir(blankRefDir),
+        new RegExp(`File go-ahead/references/${refName.replace('.', '\\.')} must not be empty`),
+      );
+    }
+
+    const targets = ['SKILL.md', ...refNames.map((name) => path.join('references', name))];
+    for (const relTarget of targets) {
+      const pathParent = makeTempDir('go-ahead-path-');
+      const pathSkillDir = createValidSkill(pathParent, 'go-ahead');
+      fs.appendFileSync(path.join(pathSkillDir, relTarget), '\nSee ../parent-skill/SKILL.md\n');
+      assert.throws(() => validateSkillDir(pathSkillDir), /Forbidden relative path/);
+
+      const tddParent = makeTempDir('go-ahead-tdd-');
+      const tddSkillDir = createValidSkill(tddParent, 'go-ahead');
+      fs.appendFileSync(
+        path.join(tddSkillDir, relTarget),
+        '\nAlways run TDD and format pull request body automatically.\n',
+      );
+      assert.throws(() => validateSkillDir(tddSkillDir), /Prescriptive coding\/TDD directive/);
     }
   });
 
