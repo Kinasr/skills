@@ -12,6 +12,8 @@
 
 Each onboarded repository keeps a standalone compact `## Work Tracking` passive block (`Closing Rule`, `Pre-Implementation Check`, optional config pointer) in root `./AGENTS.md` while storing skill-only tracker configuration in on-demand `.agents/work-tracking.md`. Otherwise unconfigured GitHub/GitLab repositories infer tracker defaults via `git remote -v` and `gh`/`glab`, and every mutating skill enforces `Propose -> Approve -> Apply`.
 
+> **Post-v0.1.0 Scope Update (`go-ahead`):** [go-ahead.md](./go-ahead.md) extends the toolkit with a 6th user-invoked skill (`go-ahead`) for parallel `ready:direct` execution orchestration across isolated worktrees, one fresh-context read-only Adversarial PR Review pass, and single combined PR creation (`Closing Rule`, never auto-merging), while preserving the historical `v0.1.0` design and verification record below.
+
 ## The Problem
 
 1. **Gap around planning tools:** Design workflows such as EGM shape and review specifications while coding agents implement code freely, yet target repositories lack a small, portable layer coordinating upstream issue intake, open-backlog dependency checks, post-plan slicing into parallel work, or cross-session handoff snapshots.
@@ -31,7 +33,7 @@ Each onboarded repository keeps a standalone compact `## Work Tracking` passive 
 
 ## Non-Goals
 
-* Coding, TDD, debugging, code review, or PR-formatting skills (implementation remains unscripted for the coding agent).
+* Coding, TDD, debugging, or PR-formatting skills — narrowed post-`v0.1.0` via [go-ahead.md](./go-ahead.md) to cover *only* prescriptive worker coding practices, TDD workflows, commit styles, custom PR body formatting templates, and auto-merging, rather than parallel execution orchestration, combined PR creation (`Closing Rule`), and one-pass read-only Adversarial PR Review.
 * Plugin-root `references/trackers/*.md` adapter files or custom per-tracker CLI wrapper scripts.
 * Built-in local Markdown file task tracking in v1 (deferred to [#1](https://github.com/Kinasr/skills/issues/1)).
 * Multi-harness manifests for Codex, Cursor, or generic `skills/` installers in v1 (deferred to [#2](https://github.com/Kinasr/skills/issues/2)).
