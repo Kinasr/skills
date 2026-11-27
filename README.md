@@ -38,7 +38,7 @@ By default, `kinasr-skills` pairs smoothly with [EGM (Elephant-Goldfish Model)](
 | **Antigravity App** | Unverified (manual copy) | Maintained | Interactive command forms remain unverified until tested. |
 | **Antigravity for IDEs / Standalone IDE** | Unverified interactive command forms | — | Standalone Antigravity IDE lacks `invoke_subagent`; batch `triage` warns, names the top-priority single-ticket command, and halts; `go-ahead` names the top-ranked unblocked `ready:direct` ticket and halts. |
 | **Claude Code** | Executed (`2026-11-26`, `v0.1.0`) — see [#8](https://github.com/Kinasr/skills/issues/8) | Maintained | Verified `claude plugin marketplace add Kinasr/skills && claude plugin install kinasr-skills@kinasr-skills` (Claude Code `2.1.323`, 5 skills, 0 parse errors) and live GitHub (`gh`) Dry-Run + approved `Apply` smoke checks across all 5 skills, including opt-in `CLAUDE.md` `@AGENTS.md` imports and `Explore` subagent `triage`. |
-| **Codex CLI, Cursor, generic `skills/`** | Deferred to [#2](https://github.com/Kinasr/skills/issues/2) | Tracked in [#2](https://github.com/Kinasr/skills/issues/2) | Self-contained `skills/<name>/` directories preserve future multi-harness portability. |
+| **Codex CLI, Cursor, generic `skills/`** | Deferred to [#2](https://github.com/Kinasr/skills/issues/2) | Tracked in [#2](https://github.com/Kinasr/skills/issues/2) | `npx skills add Kinasr/skills --list` discovery verified (`2026-11-27`, `6` skills); full multi-harness packaging and runtime checks remain tracked in [#2](https://github.com/Kinasr/skills/issues/2). |
 
 *(Built-in local Markdown file tracking is also deferred to [#1](https://github.com/Kinasr/skills/issues/1). Release `v0.2.0` adds `go-ahead` ([design spec](docs/designs/go-ahead.md)) with cross-OS CI validation passing across 6 skills; live runtime smoke checks for `go-ahead` on Antigravity CLI and Claude Code are pending post-release execution.)*
 
@@ -68,6 +68,26 @@ claude plugin marketplace add Kinasr/skills && claude plugin install kinasr-skil
 ```
 
 Invoke skills manually using `/kinasr-skills:<skill>`.
+
+#### Generic / Standalone (`npx skills`)
+
+Each skill directory (`skills/<name>/`) is self-contained and discoverable via the open Agent Skills CLI (`npx skills`):
+
+```sh
+# List discovered skills without installing
+npx skills add Kinasr/skills --list
+
+# Install all 6 skills interactively (choose target agents and scope)
+npx skills add Kinasr/skills
+
+# Install all 6 skills globally without prompts
+npx skills add Kinasr/skills -g -y
+
+# Install a single skill (for example, go-ahead)
+npx skills add Kinasr/skills --skill go-ahead
+```
+
+> **Note:** Do not combine `npx skills` standalone installs with `agy plugin install` or `claude plugin install` on the same harness, or bare skill names will collide.
 
 ### Manual Upgrades & Conflicting Local Skills
 
